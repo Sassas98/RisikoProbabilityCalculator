@@ -9,20 +9,42 @@ namespace RisikoProbabilityCalculator
     internal class RisikoProbabilityCalculator : IRisikoProbabilityCalculator
     {
         private int[][][] diceResults;
+        private List<(decimal count, int winA, int winD)>[,] results;
 
         public RisikoProbabilityCalculator()
         {
-            diceResults = Enumerable.Range(1, 3).Select(n =>
+            diceResults = CalculateDiceResults();
+            results = CalculateResults();
+        }
+
+        #region preparation
+
+        private List<(decimal count, int winA, int winD)>[,] CalculateResults()
+        {
+            var list = new List<(decimal count, int winA, int winD)>[3, 3];
+            for (int i = 0; i < 3; i++)
             {
-                if (n == 1) return [[1, 2, 3, 4, 5, 6]];
-                else if(n == 2)
+                for (int j = 0; j < 3; j++)
+                {
+                    list[i, j] = SimulateFight(i+1, j+1);
+                }
+            }
+            return list;
+        }
+
+        private int[][][] CalculateDiceResults()
+        {
+            return Enumerable.Range(1, 3).Select(n =>
+            {
+                if (n == 1) return [[1], [2], [3], [4], [5], [6]];
+                else if (n == 2)
                 {
                     var list = new List<int[]>();
                     for (int i = 1; i < 7; i++)
                     {
                         for (int j = 1; j < 7; j++)
                         {
-                            list.Add([ i, j ]);
+                            list.Add([i, j]);
                         }
                     }
                     return list.OrderBy(x => x[0]).ThenBy(x => x[1]).ToArray();
@@ -45,6 +67,8 @@ namespace RisikoProbabilityCalculator
             }).ToArray();
         }
 
+        #endregion
+
         public void ClearCalculation()
         {
             throw new NotImplementedException();
@@ -58,7 +82,23 @@ namespace RisikoProbabilityCalculator
         public List<RisikoCalculationResult> GetResults(int myT, int enemyT)
         {
             var result = SimulateFight(myT, enemyT, 100);
-            throw new NotImplementedException();
+            var list = result.Where(x => x.EnemyActualTanks == 0 || x.MyActualTanks == 0).ToList();
+            result.RemoveAll(list.Contains);
+            while(result.Count > 0)
+            {
+                result = result.SelectMany(x => SimulateFight(x.MyActualTanks, x.EnemyActualTanks, x.Probability)).ToList();
+                list.AddRange(result.Where(x => x.EnemyActualTanks == 0 || x.MyActualTanks == 0));
+                result = result.Where(x => x.EnemyActualTanks > 0 && x.MyActualTanks > 0).ToList();
+            }
+            return list.GroupBy(x => new { m = x.MyActualTanks, e = x.EnemyActualTanks })
+                       .Select(x => new RisikoCalculationResult
+            {
+                Winning = x.Key.e == 0,
+                MyTanks = x.Key.m,
+                EnemyTanks = x.Key.e,
+                Probability = x.Sum(x => x.Probability)
+
+            }).ToList();
         }
 
         public List<RisikoCalculationResult> GetResults(int[][] dices)
@@ -67,18 +107,14 @@ namespace RisikoProbabilityCalculator
         }
 
         #region fight calculation
+
         private List<RisikoRecord> SimulateFight(int attack, int defend, decimal startProbability)
         {
             int attkDices = Math.Min(attack, 3);
             int defDices = Math.Min(defend, 3);
-            bool? attkPlus = attkDices > defDices ? true : attkDices > defDices ? false : null;
-            var dicesA = attkPlus == true ? ReduceDices(diceResults[attkDices - 1], defDices) : diceResults[attkDices - 1];
-            var dicesD = attkPlus == false ? ReduceDices(diceResults[defDices - 1], attkDices) : diceResults[defDices - 1];
-            List<(int[] attk, int[] def)> combinazioni = DaiCombinazioni(dicesA, dicesD);
-            List<(decimal count, int winA, int winD)> esiti = combinazioni.Select(c => SimulateFight(c.attk, c.def))
-                                                                      .GroupBy(x => x).Select(x => ((decimal)x.Count(), x.First().Item1, x.First().Item2)).ToList();
-            decimal tot = esiti.Select(x => x.count).Sum();
-            return esiti.Select(e => new RisikoRecord
+            List<(decimal count, int winA, int winD)> results = this.results[attkDices-1, defDices-1];
+            decimal tot = results.Select(x => x.count).Sum();
+            return results.Select(e => new RisikoRecord
             {
                 MyInnerTanks = attack,
                 EnemyInnerTanks = defend,
@@ -86,6 +122,19 @@ namespace RisikoProbabilityCalculator
                 EnemyActualTanks = defend - e.winA,
                 Probability = startProbability * (e.count / tot)
             }).ToList();
+        }
+        private List<(decimal count, int winA, int winD)> SimulateFight(int attack, int defend)
+        {
+            int attkDices = Math.Min(attack, 3);
+            int defDices = Math.Min(defend, 3);
+            bool? attkPlus = attkDices > defDices ? true : attkDices < defDices ? false : null;
+            var dicesA = attkPlus == true ? ReduceDices(diceResults[attkDices - 1], defDices) :
+               attkPlus == false ? AddDices(diceResults[attkDices - 1], defDices - attkDices) : diceResults[attkDices - 1];
+            var dicesD = attkPlus == false ? ReduceDices(diceResults[defDices - 1], attkDices) :
+                attkPlus == true ? AddDices(diceResults[defDices - 1], attkDices - defDices) : diceResults[defDices - 1];
+            List<(int[] attk, int[] def)> combinazioni = DaiCombinazioni(dicesA, dicesD);
+            return combinazioni.Select(c => SimulateFight(c.attk, c.def))
+                               .GroupBy(x => x).Select(x => ((decimal)x.Count(), x.First().Item1, x.First().Item2)).ToList();
         }
 
         private (int, int) SimulateFight(int[] attk, int[] def)
@@ -100,7 +149,6 @@ namespace RisikoProbabilityCalculator
                 else countD++;
             }
             return (countA, countD);
-
         }
 
         private List<(int[], int[])> DaiCombinazioni(int[][] dicesA, int[][] dicesD)
@@ -119,10 +167,23 @@ namespace RisikoProbabilityCalculator
                 if (newDim == 1) return [a.Max()];
                 else
                 {
-                    return a.Where(x => x != a.Min()).ToArray();
+                    return a.Order().Skip(1).ToArray();
                 }
             }).ToArray();
         }
+
+        private int[][] AddDices(int[][] ints, int v)
+        {
+            var list = new List<int[]>();
+            for (int i = 0; i < v; i++)
+            {
+                for (int j = 0; j < 6; j++)
+                    list.AddRange(ints);
+                ints = list.ToArray();
+            }
+            return ints;
+        }
+
         #endregion
     }
 }

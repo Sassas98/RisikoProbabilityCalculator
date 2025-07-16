@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.13.35931.197 d17.13
+VisualStudioVersion = 17.13.35931.197
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RisikoProbabilityCalculator", "RisikoProbabilityCalculator\RisikoProbabilityCalculator.csproj", "{D424C75B-63E9-4BAC-93BA-FEF9611495E6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RisikoProbabilityConsoleTester", "RisikoProbabilityConsoleTester\RisikoProbabilityConsoleTester.csproj", "{5E3321C3-B5ED-434C-BE90-FAE2D9D619E3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{D424C75B-63E9-4BAC-93BA-FEF9611495E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D424C75B-63E9-4BAC-93BA-FEF9611495E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D424C75B-63E9-4BAC-93BA-FEF9611495E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5E3321C3-B5ED-434C-BE90-FAE2D9D619E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E3321C3-B5ED-434C-BE90-FAE2D9D619E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E3321C3-B5ED-434C-BE90-FAE2D9D619E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E3321C3-B5ED-434C-BE90-FAE2D9D619E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
