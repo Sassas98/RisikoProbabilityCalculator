@@ -1,6 +1,6 @@
-﻿namespace RisikoProbabilityCalculator
+﻿namespace RisikoProbabilityCalculator.Model
 {
-    public class RisikoRecord
+    internal class RisikoRecord
     {
         public decimal Probability { get; set; }
         public int MyInnerTanks { get; set; }

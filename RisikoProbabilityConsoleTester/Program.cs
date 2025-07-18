@@ -1,4 +1,4 @@
-﻿using RisikoProbabilityCalculator;
+﻿using RisikoProbabilityCalculator.Service;
 using System.Text.Json;
 
 namespace RisikoProbabilityConsoleTester
@@ -8,12 +8,29 @@ namespace RisikoProbabilityConsoleTester
         static void Main(string[] args)
         {
             var calculator = RisikoCalculatorFactory.BuildCalculator();
-            var result = calculator.GetResults(5, 3);
-            foreach ( var item in result.OrderByDescending(x => x.MyTanks).ThenBy(x => x.EnemyTanks) )
+            int m = 50, e = 35;
+            var result = calculator.GetResults(m, e);
+            Console.WriteLine($"Stato attuale: {result.MyActualTanks}/{result.EnemyActualTanks}");
+            Console.WriteLine($"Probabilità di vincere: {result.WinningRate.GetPercentage()}");
+            while(Math.Min(e, m) > 0)
             {
-                Console.WriteLine(JsonSerializer.Serialize(item));
+                result = calculator.GetResults(GetRandomDices(Math.Min(e, m)));
+                Console.WriteLine($"Stato attuale: {result.MyActualTanks}/{result.EnemyActualTanks}");
+                Console.WriteLine($"Probabilità di vincere: {result.WinningRate.GetPercentage()}");
+                e = result.EnemyActualTanks;
+                m = result.MyActualTanks;
             }
-            Console.WriteLine($"Probabilità di vincere: {result.Where(x => x.Winning).Sum(x => x.Probability)}");
+        }
+
+        private static int[][] GetRandomDices(int min)
+        {
+            return Enumerable.Range(0, 2).Select(x => Enumerable.Range(0, Math.Min(min, 3)).Select(x => GetRandomDice()).ToArray()).ToArray();
+        }
+
+        private static int GetRandomDice()
+        {
+            var random = new Random();
+            return random.Next(1, 7);
         }
     }
 }

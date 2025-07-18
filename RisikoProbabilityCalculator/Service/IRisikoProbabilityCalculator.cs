@@ -1,4 +1,6 @@
-﻿namespace RisikoProbabilityCalculator
+﻿using RisikoProbabilityCalculator.Model;
+
+namespace RisikoProbabilityCalculator.Service
 {
     public interface IRisikoProbabilityCalculator
     {
@@ -9,7 +11,7 @@
         /// <param name="myT"></param>
         /// <param name="enemyT"></param>
         /// <returns>the first result of the calculation</returns>
-        public List<RisikoCalculationResult> GetResults(int myT, int enemyT);
+        public RisikoCalculationResult GetResults(int myT, int enemyT);
 
         /// <summary>
         /// Method that reset the calculation
@@ -21,12 +23,6 @@
         /// </summary>
         /// <param name="dices"></param>
         /// <returns>the result of a successive fight</returns>
-        public List<RisikoCalculationResult> GetResults(int[][] dices);
-
-        /// <summary>
-        /// Method to get all the path of the current fight
-        /// </summary>
-        /// <returns>the path of the fight</returns>
-        public List<RisikoRecord> GetRecords();
+        public RisikoCalculationResult GetResults(int[][] dices);
     }
 }

@@ -1,20 +1,27 @@
-﻿using System;
+﻿using RisikoProbabilityCalculator.Model;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RisikoProbabilityCalculator
+namespace RisikoProbabilityCalculator.Service
 {
     internal class RisikoProbabilityCalculator : IRisikoProbabilityCalculator
     {
         private int[][][] diceResults;
         private List<(decimal count, int winA, int winD)>[,] results;
+        private (int m, int e)? state = null;
 
         public RisikoProbabilityCalculator()
         {
             diceResults = CalculateDiceResults();
             results = CalculateResults();
+        }
+
+        public RisikoProbabilityCalculator(int m, int e) : base()
+        {
+            state = (m, e);
         }
 
         #region preparation
@@ -71,39 +78,25 @@ namespace RisikoProbabilityCalculator
 
         public void ClearCalculation()
         {
-            throw new NotImplementedException();
+            state = null;
         }
 
-        public List<RisikoRecord> GetRecords()
+        public RisikoCalculationResult GetResults(int myT, int enemyT)
         {
-            throw new NotImplementedException();
+            if (state.HasValue && state.Value.m + state.Value.e != myT + enemyT + Math.Min(3, Math.Min(state.Value.m, state.Value.e)))
+                throw new Exception("Fight not consecutive with the last result.");
+            if (myT < 1 || enemyT < 1)
+                return BuildFinalRisikoCalculationResult(myT, enemyT);
+            var list = SimulateFightUntilTheEnd(myT, enemyT);
+            state = (myT, enemyT);
+            return BuildRisikoCalculationResult(list);
         }
 
-        public List<RisikoCalculationResult> GetResults(int myT, int enemyT)
+        public RisikoCalculationResult GetResults(int[][] dices)
         {
-            var result = SimulateFight(myT, enemyT, 100);
-            var list = result.Where(x => x.EnemyActualTanks == 0 || x.MyActualTanks == 0).ToList();
-            result.RemoveAll(list.Contains);
-            while(result.Count > 0)
-            {
-                result = result.SelectMany(x => SimulateFight(x.MyActualTanks, x.EnemyActualTanks, x.Probability)).ToList();
-                list.AddRange(result.Where(x => x.EnemyActualTanks == 0 || x.MyActualTanks == 0));
-                result = result.Where(x => x.EnemyActualTanks > 0 && x.MyActualTanks > 0).ToList();
-            }
-            return list.GroupBy(x => new { m = x.MyActualTanks, e = x.EnemyActualTanks })
-                       .Select(x => new RisikoCalculationResult
-            {
-                Winning = x.Key.e == 0,
-                MyTanks = x.Key.m,
-                EnemyTanks = x.Key.e,
-                Probability = x.Sum(x => x.Probability)
-
-            }).ToList();
-        }
-
-        public List<RisikoCalculationResult> GetResults(int[][] dices)
-        {
-            throw new NotImplementedException();
+            if (state == null) throw new Exception("Fight not already started.");
+            var result = SimulateFight(dices[0], dices[1]);
+            return GetResults(state.Value.m - result.Item2, state.Value.e - result.Item1);
         }
 
         #region fight calculation
@@ -182,6 +175,60 @@ namespace RisikoProbabilityCalculator
                 ints = list.ToArray();
             }
             return ints;
+        }
+
+        #endregion
+
+        #region model building
+        
+        private RisikoCalculationResult BuildFinalRisikoCalculationResult(int myT, int enemyT)
+        {
+            return new RisikoCalculationResult(new List<RisikoCalculationPossibility>
+            {
+                new RisikoCalculationPossibility
+                {
+                    MyTanks = myT,
+                    EnemyTanks = enemyT,
+                    Probability = 100,
+                    Winning = myT > 0
+                }
+            }, myT, enemyT);
+        }
+
+        private RisikoCalculationResult BuildRisikoCalculationResult(List<RisikoRecord> list)
+        {
+            return new RisikoCalculationResult(list.GroupBy(x => new { m = x.MyActualTanks, e = x.EnemyActualTanks })
+                       .Select(x => new RisikoCalculationPossibility
+                       {
+                           Winning = x.Key.e == 0,
+                           MyTanks = x.Key.m,
+                           EnemyTanks = x.Key.e,
+                           Probability = x.Sum(x => x.Probability)
+
+                       }).ToList(), state.Value.m, state.Value.e);
+        }
+
+        private List<RisikoRecord> SimulateFightUntilTheEnd(int myT, int enemyT)
+        {
+            var result = SimulateFight(myT, enemyT, 100);
+            var list = result.Where(x => x.EnemyActualTanks == 0 || x.MyActualTanks == 0).ToList();
+            result.RemoveAll(list.Contains);
+            while (result.Count > 0)
+            {
+                result = result.SelectMany(x => SimulateFight(x.MyActualTanks, x.EnemyActualTanks, x.Probability)).ToList();
+                list.AddRange(result.Where(x => x.EnemyActualTanks == 0 || x.MyActualTanks == 0));
+                result = result.Where(x => x.EnemyActualTanks > 0 && x.MyActualTanks > 0)
+                    .GroupBy(x => new {a = x.MyInnerTanks, b = x.MyActualTanks, c = x.EnemyInnerTanks, d = x.EnemyActualTanks})
+                    .Select(x => new RisikoRecord
+                    {
+                        MyInnerTanks = x.Key.a,
+                        MyActualTanks = x.Key.b,
+                        EnemyInnerTanks = x.Key.c,
+                        EnemyActualTanks = x.Key.d,
+                        Probability = x.Sum(y => y.Probability)
+                    }).ToList();
+            }
+            return list;
         }
 
         #endregion
